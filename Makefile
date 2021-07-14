@@ -11,8 +11,9 @@ RISCV_OBCP := riscv32-unknown-elf-objcopy
 
 LD_SCRIPT := link.ld
 
-CFLAGS := -march=rv32imv -mabi=ilp32 -static -mcmodel=medany                  \
-          -fvisibility=hidden -nostdlib -nostartfiles -Wall -Iuart/
+CFLAGS := -march=rv32imv -mabi=ilp32 -static -mcmodel=medany -O2              \
+          -fvisibility=hidden -nostdlib -nostartfiles -ffreestanding -Wall    \
+          -Iuart/
 
 PROG := bootserdow
 OBJ  := bootserdow.o exceptions.o crt0.o
