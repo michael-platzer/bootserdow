@@ -143,7 +143,7 @@ static const char MSG_SUCCESS[] = "Program exited normally\n";
 __attribute__ ((section (".boot.rodata")))
 static const char MSG_FAILURE[] = "Program exited with error status\n";
 
-__attribute__ ((section (".boot.data"))) unsigned long sp = 0, fp = 0;
+__attribute__ ((section (".boot.data"))) unsigned long sp = 0, fp = 0, ret = 0;
 
 __attribute__ ((section (".boot")))
 int main(void)
@@ -156,21 +156,24 @@ int main(void)
         asm volatile ("mv %0, sp" : "=r" (sp));
         asm volatile ("mv %0, fp" : "=r" (fp));
 
-        // execute application
-        int retval = (*entrypoint)();
+        // execute application, which may clobber all registers
+        asm volatile ("li   a0, 0\n\t"
+                      "li   a1, 0\n\t"
+                      "jalr %0\n\t"
+                      "la   t0, ret\n\t"
+                      "sw   a0, (t0)\n\t"
+                      "la   t0, sp\n\t"
+                      "lw   sp, (t0)\n\t"
+                      "la   t0, fp\n\t"
+                      "lw   fp, (t0)"
+                      :: "r" (entrypoint)
+                      : "x1",  "x3",  "x4",  "x5",  "x6",  "x7",
+                        "x9",  "x10", "x11", "x12", "x13", "x14",
+                        "x15", "x16", "x17", "x18", "x19", "x20",
+                        "x21", "x22", "x23", "x24", "x25", "x26",
+                        "x27", "x28", "x29", "x30", "x31", "memory");
 
-        // clobber all registers except stack pointer and frame pointer
-        asm volatile ("" ::: "x1",  "x3",  "x4",  "x5",  "x6",  "x7",
-                             "x9",  "x10", "x11", "x12", "x13", "x14",
-                             "x15", "x16", "x17", "x18", "x19", "x20",
-                             "x21", "x22", "x23", "x24", "x25", "x26",
-                             "x27", "x28", "x29", "x30", "x31");
-
-        // restore stack pointer and frame pointer
-        asm volatile ("mv sp, %0" :: "r" (sp));
-        asm volatile ("mv fp, %0" :: "r" (fp));
-
-        if (retval == 0)
+        if (ret == 0)
             uart_puts(MSG_SUCCESS);
         else
             uart_puts(MSG_FAILURE);
